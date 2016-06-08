@@ -47,16 +47,13 @@ def createNodes(people):
         net.add_node(id, name = name, field = field, school = school, position = position, work = [])
 
 '''
-Get citation data
-MAKE SURE IT WORKS/ DEAL WITH LATER
-getCite('Grayson', "Microbiology")
+Get citation data FUCK I THINK IT WORKS HOLY SHITTTT
 '''
 def getCite(author, paper):
     base = "https://scholar.google.com/scholar?q="
     nauthor = author.replace(" ", "+")
     npaper = paper.replace(" ", "+")
     url = base + nauthor + "+" + npaper
-    print(url)
     get = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     html = urllib.request.urlopen(get).read()
     soup = BeautifulSoup(html, 'lxml')
@@ -65,20 +62,18 @@ def getCite(author, paper):
     for b in allTitles:
         titles.append(b.find('a').get_text())
     title = process.extract(paper, titles, limit = 1)[0][0]
-    print(titles)
-    print(title)
     number = titles.index(title)
-    print(number)
-
-    #---------------------------
-    allCites = soup.findAll(class_= 'gs_fl')
+    allCites = soup.findAll(lambda tag: tag.name == 'div' and
+                                   tag.get('class') == ['gs_fl']) #fixed it god damn finally jeez
     citations = []
     for b in allCites:
-        print(b)
-        citenum = b.find('a').get_text()
+        cited = b.find('a').get_text()
+        citenum = int(re.search(r'\d+', cited).group())
         citations.append(citenum)
-        print(citenum)
-    #return citations[number]
+    return citations[number]
+
+def isggs(clas):
+    return (clas is not None) and (len(clas) == 1) and (clas.__contains__('gs_fl'))
 
 '''
 Loops through grant and publication data to add the correct data to the correct people and create map of who
@@ -214,15 +209,22 @@ def time(node, neighbor): #returns number of years working together, 0 if no wor
 '''
 Outputs list of most successful people and saves barchart
 '''
-def best(map, nametop, namebot):
+def bestHist(weight, nametop, namebot):
     X = 5 #top how many and bottom how many
-    big = heapq.nlargest(X, map, key = map.get)
-    data = [go.Bar(x = big, y = [map[x] for x in big])]
+    big = heapq.nlargest(X, weight, key = weight.get)
+    data = [go.Bar(x = big, y = [weight[x] for x in big])]
     py.image.save_as(data, nametop)
-    small = heapq.nsmallest(X, map, key = map.get)
+    small = heapq.nsmallest(X, weight, key = weight.get)
     small.reverse()
-    data2 = [go.Bar(x = small, y = [map[x] for x in small])]
+    data2 = [go.Bar(x = small, y = [weight[x] for x in small])]
     py.image.save_as(data2, namebot)
+
+'''
+
+'''
+def scatterAll(collab, productive, name):
+    data = [go.Scatter(x = [collab[x] for x in collab], y = [productive[x] for x in productive], mode = 'markers')]
+    py.image.save_as(data, name)
 
 '''
 Adjusts the fieldnet network to behave as an index where low numbers are better
@@ -296,5 +298,6 @@ addWork(grantf, publicationf, mapWork)
 findEdges(mapWork)
 removeBlanks()
 calcCollab(weights)
-calcProductivity(productive)
-best(weights,'top5', 'bottom5')
+calcH(productive)
+bestHist(weights,'top5', 'bottom5')
+scatterAll(weights, productive, 'scatter')
