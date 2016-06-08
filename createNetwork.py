@@ -104,7 +104,8 @@ def addWork(grant, publication, mapWork):
             net.node[id]['work'].append(curr)
 
             if mapWork.__contains__(workid):  # creating a dict {grant id: [authors]} to loop through later
-                mapWork[workid].append(id)
+                if not mapWork[workid].__contains__(id):
+                    mapWork[workid].append(id)
             else:
                 mapWork[workid] = [id]
 
