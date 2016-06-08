@@ -62,6 +62,8 @@ def getCite(author, paper):
     nauthor = author.replace(" ", "+")
     npaper = paper.replace(" ", "+")
     url = base + nauthor + "+" + npaper
+    #get = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    #html = urllib.request.urlopen(get).read()
     html = requests.get(url)
     soup = BeautifulSoup(html, 'lxml')
     allTitles = soup.findAll('h3', 'gs_rt')
@@ -91,7 +93,7 @@ def getCite(author, paper):
 '''
 Loops through grant and publication data to add the correct data to the correct people and create map of who
 worked on what publication
-NEED TO SOLVE DOUBLE COUNTING PUBS AND GRANTS PROBLEM, PROBLEM WITH PUBLICATION TYPE
+solve publication type
 '''
 def addWork(grant, publication, mapWork):
     grantinfo = [grant, 'gra', 'val-s']
@@ -103,11 +105,13 @@ def addWork(grant, publication, mapWork):
             name = line[2]
             workid = line[1][re.search(x[1], line[1]).end():len(line[1])]
             year = line[3][re.search(x[2], line[3]).end():re.search(x[2], line[3]).end() + 4]
-            if x == grantinfo:
-                type = line[4][re.search('extension#', line[4]).end():len(line[4])]
-            else:
-                type = 'publication'
-
+            try:
+                type = line[4][re.search('extension#', line[4]).end():len(line[4])] #type has different formats
+            except AttributeError:
+                try:
+                    type = line[4][re.search('bibo/', line[4]).end():len(line[4])]
+                except AttributeError:
+                    type = line[4][re.search('core#', line[4]).end():len(line[4])]
             curr = Work(workid, name, type, year)
             net.node[id]['work'].append(curr)
             #time.sleep(1)
