@@ -159,7 +159,7 @@ def removeBlanks():
 Calculate the collaboration coefficient of each node and saves in map (name: number)
 NEED TO FILL IN CALCULATION STILL
 '''
-def calcCoeff(map):
+def calcCollab(map):
     for node in net.nodes():
         curr = net.node[node]
         tot = 0
@@ -171,7 +171,7 @@ def calcCoeff(map):
             fieldweight = fieldnet[neigh['field']][curr['field']]['weight']
             num = (num * time(node, neighbor))
             tot += num
-        map[curr['name']] = tot * percCollab(node)
+        map[curr['name']] = [tot * percCollab(node)]
         net.node[node]['weight'] = tot * percCollab(node) #also save in the network (for graphing)
 
 def departments(node): #returns number of fields the person has collaborated with
@@ -229,6 +229,21 @@ def networkSep():
     yo = 2
 
 '''
+Calculate productivity of each person (just returns h-index)
+'''
+def calcProductivity(map):
+    for node in net.nodes():
+        nodecite = [x.citations for x in net.node[node]['work']]
+        nodecite.sort(reverse = True)
+        for x in nodecite:
+            if x < nodecite.index(x) + 1:
+                map[net.node[node]['name']].append(nodecite.index(x))
+                break
+
+
+
+
+'''
 MAIN
 '''
 peoplef = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/appointments_neurobiology & ophthalmology.csv'))
@@ -241,5 +256,5 @@ createNodes(peoplef)
 addWork(grantf, publicationf, mapWork)
 findEdges(mapWork)
 removeBlanks()
-calcCoeff(weights)
+calcCollab(weights)
 best(weights)
