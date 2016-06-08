@@ -47,7 +47,7 @@ def createNodes(people):
         net.add_node(id, name = name, field = field, school = school, position = position, work = [])
 
 '''
-Get citation data FUCK I THINK IT WORKS HOLY SHITTTT
+Get citation data DED SO SAD :'(
 '''
 def getCite(author, paper):
     base = "https://scholar.google.com/scholar?q="
@@ -139,16 +139,6 @@ def findEdges(mapWork):
                             fieldnet.add_edge(field1, field2, weight = 1)
 
 '''
-Clears lists for export to graphml.
-'''
-def export():
-    for this in net.nodes():
-        net.node[this]['work'] = len(net.node[this]['work']) #make publications just be # of pubs
-    for this, that in net.edges():
-        net.edge[this][that]['work'] = len(net.edge[this][that]['work'])
-    nx.write_graphml(net, "hospital.graphml") #export`
-
-'''
 Remove nodes that have no edges at all.
 '''
 def removeBlanks():
@@ -157,9 +147,11 @@ def removeBlanks():
     net.remove_nodes_from(to_remove)
 
 '''
-Calculate the collaboration coefficient of each node and saves in map (name: number)
-NEED TO FILL IN CALCULATION STILL
+Calculate the collaboration coefficient of each node and saves in map (name: number), various helper functions
 '''
+def networkSep():
+    yo = 2
+
 def calcCollab(map):
     for node in net.nodes():
         curr = net.node[node]
@@ -205,7 +197,7 @@ def time(node, neighbor): #returns number of years working together, 0 if no wor
         return lapsed
 
 '''
-Outputs list of most successful people and saves barchart
+3 visualization options.
 '''
 def bestHist(weight, nametop, namebot):
     X = 5 #top how many and bottom how many
@@ -227,21 +219,12 @@ def histAll(weight, name):
     data = [go.Bar(x = named, y = val)]
     py.image.save_as(data, filename = name + ".png")
 
-
-
 def scatterAll(collab, productive, name):
     data = [go.Scatter(x = [collab[x] for x in collab], y = [productive[x] for x in productive], mode = 'markers')]
     py.image.save_as(data, name + ".png")
 
 '''
-Adjusts the fieldnet network to behave as an index where low numbers are better
-NEED TO WRITE
-'''
-def networkSep():
-    yo = 2
-
-'''
-Calculate productivity of each person (just returns h-index)
+Calculate productivity of each person. Next four functions are all options
 '''
 def calcH(map):
     for node in net.nodes():
@@ -288,6 +271,15 @@ def calcHi(map, mapWork):
         authors = sum(nums) / float(len(nums))
         map[net.node[node]['name']] = h/authors
 
+'''
+Clears lists for export to graphml.
+'''
+def export():
+    for this in net.nodes():
+        net.node[this]['work'] = len(net.node[this]['work']) #make publications just be # of pubs
+    for this, that in net.edges():
+        net.edge[this][that]['work'] = len(net.edge[this][that]['work'])
+    nx.write_graphml(net, "hospital.graphml") #export`
 
 
 
