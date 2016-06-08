@@ -1,11 +1,10 @@
 """
 author: Anne Driscoll
 contact: amd112@duke.edu
-date: May 2016
+date: June 2016
 """
 
 import csv
-import time
 import networkx as nx
 import itertools
 import matplotlib.pyplot as plt #needed for plotting
@@ -47,13 +46,6 @@ def createNodes(people):
         position = line[2][re.search('#', line[2]).end():len(line[2])]
         net.add_node(id, name = name, field = field, school = school, position = position, work = [])
 
-def trying(author, paper):
-    base = "https://scholar.google.com/scholar?q="
-    nauthor = author.replace(" ", "+")
-    npaper = paper.replace(" ", "+")
-    url = base + nauthor + "+" + npaper
-    html = requests.get(url)
-
 '''
 Get citation data FUCK I THINK IT WORKS HOLY SHITTTT
 '''
@@ -93,7 +85,6 @@ def getCite(author, paper):
 '''
 Loops through grant and publication data to add the correct data to the correct people and create map of who
 worked on what publication
-solve publication type
 '''
 def addWork(grant, publication, mapWork):
     grantinfo = [grant, 'gra', 'val-s']
@@ -114,7 +105,6 @@ def addWork(grant, publication, mapWork):
                     type = line[4][re.search('core#', line[4]).end():len(line[4])]
             curr = Work(workid, name, type, year)
             net.node[id]['work'].append(curr)
-            #time.sleep(1)
 
             if mapWork.__contains__(workid):  # creating a dict {grant id: [authors]} to loop through later
                 if not mapWork[workid].__contains__(id):
@@ -148,7 +138,6 @@ def findEdges(mapWork):
                         else:
                             fieldnet.add_edge(field1, field2, weight = 1)
 
-
 '''
 Clears lists for export to graphml.
 '''
@@ -174,17 +163,6 @@ NEED TO FILL IN CALCULATION STILL
 def calcCollab(map):
     for node in net.nodes():
         curr = net.node[node]
-        '''
-        tot = 0
-        for neighbor in net[node]:
-            neigh = net.node[neighbor]
-            num = 0
-            for paper in net.edge[node][neighbor]['work']:
-                num += 1
-            fieldweight = fieldnet[neigh['field']][curr['field']]['weight']
-            num = (num * time(node, neighbor))
-            tot += num
-        '''
         map[curr['name']] = percCollab(node) * departments(node)
         net.node[node]['weight'] = percCollab(node) * departments(node) #also save in the network (for graphing)
 
@@ -200,9 +178,12 @@ def percCollab(node): #returns percentage of publications that are collaborative
     collabPapers = []
     for neighbor in net[node]:
         for work in net.edge[node][neighbor]['work']:
-           if not collabPapers.__contains__(work):
+            if not collabPapers.__contains__(work):
                collabPapers.append(work) #can't just sum lengths because may work on same paper w/ multiple people
-    return len(collabPapers)/len(net.node[node]['work'])
+    perc = len(collabPapers)/len(net.node[node]['work'])
+    if perc == 0:
+        return 0.1
+    return perc
 
 def time(node, neighbor): #returns number of years working together, 0 if no work, 1 if 1 year or less
     years = []
@@ -237,15 +218,24 @@ def bestHist(weight, nametop, namebot):
     data2 = [go.Bar(x = small, y = [weight[x] for x in small])]
     py.image.save_as(data2, filename = namebot + ".png")
 
-'''
+def histAll(weight, name):
+    names = [x for x in weight.keys()]
+    values = [y for y in weight.values()]
+    tog = zip(values, names)
+    tog = sorted(tog, key = lambda x: x[0], reverse = True)
+    val, named = zip(*tog)
+    data = [go.Bar(x = named, y = val)]
+    py.image.save_as(data, filename = name + ".png")
 
-'''
+
+
 def scatterAll(collab, productive, name):
     data = [go.Scatter(x = [collab[x] for x in collab], y = [productive[x] for x in productive], mode = 'markers')]
-    py.image.save_as(data, name)
+    py.image.save_as(data, name + ".png")
 
 '''
 Adjusts the fieldnet network to behave as an index where low numbers are better
+NEED TO WRITE
 '''
 def networkSep():
     yo = 2
@@ -318,4 +308,6 @@ removeBlanks()
 calcCollab(weights)
 calcH(productive)
 bestHist(weights,'top', 'bottom')
-#scatterAll(weights, productive, 'scatter')
+histAll(weights, 'all')
+productive = weights
+scatterAll(weights, productive, 'scatter')
