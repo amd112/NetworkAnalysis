@@ -138,7 +138,7 @@ def findEdges(mapWork):
 
 
 '''
-Attempt to clear list args for export to graphml. Works!
+Clears lists for export to graphml.
 '''
 def export():
     for this in net.nodes():
@@ -184,14 +184,17 @@ def departments(node):
 def percCollab(node):
     collabPapers = []
     for neighbor in net[node]:
-        for work in net.node[neighbor]['work']:
+        for work in net.edge[node][neighbor]['work']:
            if not collabPapers.__contains__(work):
-               collabPapers.append(work)
+               collabPapers.append(work) #can't just sum lengths because may work on same paper w/ multiple people
     return len(collabPapers)/len(net.node[node]['work'])
 
 def time(node, neighbor):
     years = []
-    if len(net.edge[node][neighbor]['work']) <= 1:
+    edge = net.edge[node][neighbor]['work']
+    if len(edge) == 0:
+        return 0
+    if len(edge) == 1:
         return 1
     for work in net.edge[node][neighbor]['work']:
         ids = [x.id for x in net.node[node]['work']]
@@ -199,7 +202,11 @@ def time(node, neighbor):
         years.append(int(net.node[node]['work'][index].year)) #not saved as work type, just an id number
     if len(years) <= 1:
         return 1
-    return max(years) - min(years) #returns something that relates to their relationship
+    lapsed = max(years) - min(years)
+    if lapsed == 0:
+        return 1
+    else:
+        return lapsed
 
 '''
 Outputs list of most successful people and saves barchart to TeamScience directory
