@@ -5,9 +5,10 @@ date: May 2016
 """
 
 import csv
+import time
 import networkx as nx
 import itertools
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt #needed for plotting
 import plotly.plotly as py
 import plotly.graph_objs as go
 import urllib
@@ -15,6 +16,7 @@ from tkinter import *
 from bs4 import BeautifulSoup
 from fuzzywuzzy import process
 import heapq
+import requests
 py.sign_in('amd112', '0eso7gihvt')
 
 net = nx.Graph()
@@ -29,8 +31,7 @@ class Work:
         self.name = name
         self.type = type
         self.year = year
-        self.citations = int
-        self.pi = ""
+        self.citations = 0
 
 '''
 Loops through position info to create Nodes with id, name, field, school, position type info.
@@ -46,6 +47,13 @@ def createNodes(people):
         position = line[2][re.search('#', line[2]).end():len(line[2])]
         net.add_node(id, name = name, field = field, school = school, position = position, work = [])
 
+def trying(author, paper):
+    base = "https://scholar.google.com/scholar?q="
+    nauthor = author.replace(" ", "+")
+    npaper = paper.replace(" ", "+")
+    url = base + nauthor + "+" + npaper
+    html = requests.get(url)
+
 '''
 Get citation data FUCK I THINK IT WORKS HOLY SHITTTT
 '''
@@ -54,13 +62,17 @@ def getCite(author, paper):
     nauthor = author.replace(" ", "+")
     npaper = paper.replace(" ", "+")
     url = base + nauthor + "+" + npaper
-    get = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    html = urllib.request.urlopen(get).read()
+    html = requests.get(url)
     soup = BeautifulSoup(html, 'lxml')
     allTitles = soup.findAll('h3', 'gs_rt')
+    if len(allTitles) == 0:
+        return 0
     titles = []
     for b in allTitles:
-        titles.append(b.find('a').get_text())
+        try:
+            titles.append(b.find('a').get_text())
+        except AttributeError:
+            return 0
     title = process.extract(paper, titles, limit = 1)[0][0]
     number = titles.index(title)
     allCites = soup.findAll(lambda tag: tag.name == 'div' and
@@ -68,12 +80,13 @@ def getCite(author, paper):
     citations = []
     for b in allCites:
         cited = b.find('a').get_text()
-        citenum = int(re.search(r'\d+', cited).group())
+        try:
+            citenum = int(re.search(r'\d+', cited).group())
+            print(cited)
+        except AttributeError:
+            return 0
         citations.append(citenum)
     return citations[number]
-
-def isggs(clas):
-    return (clas is not None) and (len(clas) == 1) and (clas.__contains__('gs_fl'))
 
 '''
 Loops through grant and publication data to add the correct data to the correct people and create map of who
@@ -97,13 +110,13 @@ def addWork(grant, publication, mapWork):
 
             curr = Work(workid, name, type, year)
             net.node[id]['work'].append(curr)
+            #time.sleep(1)
 
             if mapWork.__contains__(workid):  # creating a dict {grant id: [authors]} to loop through later
                 if not mapWork[workid].__contains__(id):
                     mapWork[workid].append(id)
             else:
                 mapWork[workid] = [id]
-
 
 '''
 Loops through map created in addWork and creates edges.
@@ -211,13 +224,14 @@ Outputs list of most successful people and saves barchart
 '''
 def bestHist(weight, nametop, namebot):
     X = 5 #top how many and bottom how many
+    py.sign_in('amd112', '0eso7gihvt')
     big = heapq.nlargest(X, weight, key = weight.get)
     data = [go.Bar(x = big, y = [weight[x] for x in big])]
-    py.image.save_as(data, nametop)
+    py.image.save_as(data, filename = nametop + ".png")
     small = heapq.nsmallest(X, weight, key = weight.get)
     small.reverse()
     data2 = [go.Bar(x = small, y = [weight[x] for x in small])]
-    py.image.save_as(data2, namebot)
+    py.image.save_as(data2, filename = namebot + ".png")
 
 '''
 
@@ -299,5 +313,5 @@ findEdges(mapWork)
 removeBlanks()
 calcCollab(weights)
 calcH(productive)
-bestHist(weights,'top5', 'bottom5')
-scatterAll(weights, productive, 'scatter')
+bestHist(weights,'top', 'bottom')
+#scatterAll(weights, productive, 'scatter')
