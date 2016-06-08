@@ -146,6 +146,7 @@ def removeBlanks():
     to_remove = [n for n in deg if deg[n] == 0]
     net.remove_nodes_from(to_remove)
 
+
 '''
 Calculate the collaboration coefficient of each node and saves in map (name: number), various helper functions
 '''
@@ -155,8 +156,21 @@ def networkSep():
 def calcCollab(map):
     for node in net.nodes():
         curr = net.node[node]
-        map[curr['name']] = percCollab(node) * departments(node)
-        net.node[node]['weight'] = percCollab(node) * departments(node) #also save in the network (for graphing)
+        map[curr['name']] = percCollab(node) * departments(node) * 40
+
+def calcCollab2(map):
+    for node in net.nodes():
+        curr = net.node[node]
+        map[curr['name']] = len(net[node])
+
+def calcCollab3(map):
+    for node in net.nodes():
+        curr = net.node[node]
+        times = []
+        for neigh in net[node]:
+            times.append(time(node, neigh))
+        avg = sum(times) / len(times)
+        map[curr['name']] = avg * 5
 
 def departments(node): #returns number of fields the person has collaborated with
     deps = []
@@ -196,8 +210,9 @@ def time(node, neighbor): #returns number of years working together, 0 if no wor
     else:
         return lapsed
 
+
 '''
-3 visualization options.
+4 visualization options.
 '''
 def bestHist(weight, nametop, namebot):
     X = 5 #top how many and bottom how many
@@ -222,6 +237,25 @@ def histAll(weight, name):
 def scatterAll(collab, productive, name):
     data = [go.Scatter(x = [collab[x] for x in collab], y = [productive[x] for x in productive], mode = 'markers')]
     py.image.save_as(data, name + ".png")
+
+def stackedHist(weight, weight2, weight3, name):
+    names = [x for x in weight.keys()]
+    values = [y for y in weight.values()]
+    names2 = [x for x in weight2.keys()]
+    values2 = [y for y in weight2.values()]
+    names3 = [x for x in weight3.keys()]
+    values3 = [y for y in weight3.values()]
+    tog = zip(values, names, values2, names2, values3, names3)
+    tog = sorted(tog, key=lambda x: x[0], reverse=True)
+    val, nam, val2, nam2, val3, nam3 = zip(*tog)
+    data = go.Bar(x = nam, y = val)
+    data2 = go.Bar(x = nam2, y = val2)
+    data3 = go.Bar(x = nam3, y = val3)
+    trace = [data, data2, data3]
+    layout = go.Layout(barmode='group')
+    fig = go.Figure(data=trace, layout=layout)
+    py.image.save_as(fig, filename = name + ".png")
+
 
 '''
 Calculate productivity of each person. Next four functions are all options
@@ -292,14 +326,19 @@ publicationf = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data
 mapWork = dict()
 weights = dict()
 productive = dict()
+weights2 = dict()
+weights3 = dict()
 
 createNodes(peoplef)
 addWork(grantf, publicationf, mapWork)
 findEdges(mapWork)
 removeBlanks()
 calcCollab(weights)
+calcCollab2(weights2)
+calcCollab3(weights3)
 calcH(productive)
 bestHist(weights,'top', 'bottom')
+stackedHist(weights, weights2, weights3, 'stack')
 histAll(weights, 'all')
 productive = weights
 scatterAll(weights, productive, 'scatter')
