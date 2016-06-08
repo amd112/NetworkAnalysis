@@ -162,6 +162,7 @@ NEED TO FILL IN CALCULATION STILL
 def calcCollab(map):
     for node in net.nodes():
         curr = net.node[node]
+        '''
         tot = 0
         for neighbor in net[node]:
             neigh = net.node[neighbor]
@@ -171,8 +172,9 @@ def calcCollab(map):
             fieldweight = fieldnet[neigh['field']][curr['field']]['weight']
             num = (num * time(node, neighbor))
             tot += num
-        map[curr['name']] = [tot * percCollab(node)]
-        net.node[node]['weight'] = tot * percCollab(node) #also save in the network (for graphing)
+        '''
+        map[curr['name']] = percCollab(node) * departments(node)
+        net.node[node]['weight'] = percCollab(node) * departments(node) #also save in the network (for graphing)
 
 def departments(node): #returns number of fields the person has collaborated with
     deps = []
@@ -212,15 +214,15 @@ def time(node, neighbor): #returns number of years working together, 0 if no wor
 '''
 Outputs list of most successful people and saves barchart
 '''
-def best(map):
+def best(map, nametop, namebot):
     X = 5 #top how many and bottom how many
     big = heapq.nlargest(X, map, key = map.get)
     data = [go.Bar(x = big, y = [map[x] for x in big])]
-    py.image.save_as(data, 'my_plot.png')
+    py.image.save_as(data, nametop)
     small = heapq.nsmallest(X, map, key = map.get)
     small.reverse()
     data2 = [go.Bar(x = small, y = [map[x] for x in small])]
-    py.image.save_as(data2, 'my_plot2.png')
+    py.image.save_as(data2, namebot)
 
 '''
 Adjusts the fieldnet network to behave as an index where low numbers are better
@@ -231,14 +233,50 @@ def networkSep():
 '''
 Calculate productivity of each person (just returns h-index)
 '''
-def calcProductivity(map):
+def calcH(map):
     for node in net.nodes():
         nodecite = [x.citations for x in net.node[node]['work']]
         nodecite.sort(reverse = True)
         for x in nodecite:
             if x < nodecite.index(x) + 1:
-                map[net.node[node]['name']].append(nodecite.index(x))
+                map[net.node[node]['name']] = nodecite.index(x)
                 break
+
+def calci10(map):
+    for node in net.nodes():
+        nodecite = [x.citations for x in net.node[node]['work']]
+        num = 0
+        for x in nodecite:
+            if x > 10:
+                num += 1
+        map[net.node[node]['name']] = num
+
+def calcG(map):
+    for node in net.nodes():
+        nodecite = [x.citations for x in net.node[node]['work']]
+        nodecite.sort(reverse=True)
+        tot = 0
+        for x in nodecite:
+            tot += x
+            if tot < ((nodecite.index(x) + 1) ** 2):
+                map[net.node[node]['name']] = nodecite.index(x)
+                break
+
+def calcHi(map, mapWork):
+    for node in net.nodes():
+        nodecite = [x.citations for x in net.node[node]['work']]
+        nodework = [x.id for x in net.node[node]['work']]
+        nodecite.sort(reverse=True)
+        h = 0
+        nums = []
+        for x in nodecite:
+            if x < nodecite.index(x) + 1:
+                h = nodecite.index(x)
+                break
+        for x in nodework:
+            nums.append(len(mapWork[id]))
+        authors = sum(nums) / float(len(nums))
+        map[net.node[node]['name']] = h/authors
 
 
 
@@ -251,10 +289,12 @@ grantf = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/gran
 publicationf = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/publications_neurobiology & ophthalmology.csv'))
 mapWork = dict()
 weights = dict()
+productive = dict()
 
 createNodes(peoplef)
 addWork(grantf, publicationf, mapWork)
 findEdges(mapWork)
 removeBlanks()
 calcCollab(weights)
-best(weights)
+calcProductivity(productive)
+best(weights,'top5', 'bottom5')
