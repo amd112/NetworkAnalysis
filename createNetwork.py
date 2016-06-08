@@ -134,7 +134,7 @@ def findEdges(mapWork):
                         if fieldnet.has_edge(field1, field2):
                             fieldnet[field1][field2]['weight'] += 1
                         else:
-                            fieldnet.add_edge(field1, field2, weight=1)
+                            fieldnet.add_edge(field1, field2, weight = 1)
 
 
 '''
@@ -172,8 +172,9 @@ def calcCoeff(map):
             num = (num * time(node, neighbor))
             tot += num
         map[curr['name']] = tot * percCollab(node)
+        net.node[node]['weight'] = tot * percCollab(node) #also save in the network (for graphing)
 
-def departments(node):
+def departments(node): #returns number of fields the person has collaborated with
     deps = []
     for neighbor in net[node]:
         field = net.node[neighbor]['field']
@@ -181,7 +182,7 @@ def departments(node):
             deps.append(field)
     return len(deps)
 
-def percCollab(node):
+def percCollab(node): #returns percentage of publications that are collaborative
     collabPapers = []
     for neighbor in net[node]:
         for work in net.edge[node][neighbor]['work']:
@@ -189,7 +190,7 @@ def percCollab(node):
                collabPapers.append(work) #can't just sum lengths because may work on same paper w/ multiple people
     return len(collabPapers)/len(net.node[node]['work'])
 
-def time(node, neighbor):
+def time(node, neighbor): #returns number of years working together, 0 if no work, 1 if 1 year or less
     years = []
     edge = net.edge[node][neighbor]['work']
     if len(edge) == 0:
@@ -209,7 +210,7 @@ def time(node, neighbor):
         return lapsed
 
 '''
-Outputs list of most successful people and saves barchart to TeamScience directory
+Outputs list of most successful people and saves barchart
 '''
 def best(map):
     X = 5 #top how many and bottom how many
@@ -220,11 +221,10 @@ def best(map):
     small.reverse()
     data2 = [go.Bar(x = small, y = [map[x] for x in small])]
     py.image.save_as(data2, 'my_plot2.png')
-    #layout = go.Layout(title='The ', width=800, height=640)
-    #fig = go.Figure(data = data2, layout = layout)
-    #py.image.ishow(fig)
 
-
+'''
+Adjusts the fieldnet network to behave as an index where low numbers are better
+'''
 def networkSep():
     yo = 2
 
