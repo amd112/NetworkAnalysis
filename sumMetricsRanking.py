@@ -146,7 +146,7 @@ def position(dict, dev, person, met1, met2):
                 people.append([name, val])
                 if node == person:
                     find = [name, val]
-            people.sort(key = lambda x: x[1])
+            people.sort(key = lambda x: x[1], reverse = True) #reverse so that highest is first
             row.append(people.index(find))
         matrix.append(row)
     return matrix
@@ -169,10 +169,24 @@ removeBlanks()
 valMet = dict()
 metrics(valMet)
 
-matrix = position(valMet, 100, '1004042', 'percCollab', 'avgTime')
+matrix = position(valMet, 400, '1004042', 'percCollab', 'avgTime')
+matrix2 = position(valMet, 400, '1004042', 'percCollab', 'degree')
 
 data = [go.Heatmap(z = matrix)]
-fig = go.Figure(data = data)
+layout = go.Layout(xaxis=dict(title='degree', showgrid=False, zeroline=False, showline=False,
+                              ticks='', showticklabels=False),
+                   yaxis=dict(title='avgTime', showgrid=False, zeroline=False, showline=False,
+                              ticks='', showticklabels=False))
+fig = go.Figure(data = data, layout = layout)
 py.image.save_as(fig, filename = "heat.png")
+
+data = [go.Heatmap(z = matrix2)]
+layout = go.Layout(xaxis=dict(title = 'degree', showgrid=False, zeroline=False, showline=False,
+                             ticks='', showticklabels=False),
+                   yaxis=dict(title = 'avgTime', showgrid=False, zeroline=False, showline=False,
+                             ticks='', showticklabels=False))
+fig = go.Figure(data = data, layout = layout)
+py.image.save_as(fig, filename = "heat2.png")
+
 
 
