@@ -169,54 +169,46 @@ def removeBlanks():
 '''
 Calculate the collaboration coefficient of each node and saves in map (name: number), various helper functions
 '''
-def networkSep():
-    yo = 2
-
-def calcCollab(map):
+def calcAllMetrics(dict):
     for node in net.nodes():
+        collabPapers = []
         curr = net.node[node]
-        map[curr['name']] = percCollab(node) * departments(node) * 40
-        net.node[node]['weight'] = percCollab(node) * departments(node)
+        deps = []
+        times = []
+        for neighbor in net[curr]:
+            years = []
+            edgework = net.edge[curr][neighbor]['work']
+            ids = [x.id for x in net.node[node]['work']]
+            field = net.node[neighbor]['field']
+            if not deps.__contains__(field):
+                deps.append(field)
+            for work in edgework:
+                index = ids.index(work)
+                years.append(int(net.node[node]['work'][index].year))
+                if not collabPapers.__contains__(work):
+                    collabPapers.append(work)
+            if len(years) <= 1:
+                timeWorked = 1
+            else:
+                timeWorked = max(years) - min(years)
+            times.append(timeWorked)
+        perc = len(collabPapers) / len(net.node[curr]['work'])
+        numDeps = len(deps)
+        avgTime = sum(times) / len(times)
 
-def departments(node): #returns number of fields the person has collaborated with
-    deps = []
-    for neighbor in net[node]:
-        field = net.node[neighbor]['field']
-        if not deps.__contains__(field):
-            deps.append(field)
-    return len(deps)
-
-def percCollab(node): #returns percentage of publications that are collaborative
-    collabPapers = []
-    for neighbor in net[node]:
-        for work in net.edge[node][neighbor]['work']:
-            if not collabPapers.__contains__(work):
-               collabPapers.append(work) #can't just sum lengths because may work on same paper w/ multiple people
-    perc = len(collabPapers)/len(net.node[node]['work'])
-    if perc == 0:
-        return 0.1
-    return perc
-
-def timeCollab(node, neighbor): #returns number of years working together, 0 if no work, 1 if 1 year or less
-    years = []
-    edge = net.edge[node][neighbor]['work']
-    if len(edge) == 0:
-        return 0
-    if len(edge) == 1:
-        return 1
-    for work in net.edge[node][neighbor]['work']:
-        ids = [x.id for x in net.node[node]['work']]
-        index = ids.index(work)
-        years.append(int(net.node[node]['work'][index].year)) #not saved as work type, just an id number
-    if len(years) <= 1:
-        return 1
-    lapsed = max(years) - min(years)
-    if lapsed == 0:
-        return 1
-    else:
-        return lapsed
-
-
+        #now doing calculations for productivity rankings
+        nodecite = [x.citations for x in net.node[node]['work']]
+        nodecite.sort(reverse=True)
+        i10 = 0
+        for x in nodecite:
+            if x > 10:
+                i10 += 1
+            if x < nodecite.index(x) + 1:
+                hIndex = nodecite.index(x)
+                break
+        dict[net.node[node]['name']] = {'percCollab': perc, 'numDepartments': numDeps, 'avgCollabTime': avgTime,
+                                        'hIndex': hIndex, 'i10Index': i10}
+        
 '''
 4 visualization options.
 '''
@@ -266,23 +258,6 @@ def stackedHist(weight, weight2, weight3, name):
 '''
 Calculate productivity of each person. Next four functions are all options
 '''
-def calcH(map):
-    for node in net.nodes():
-        nodecite = [x.citations for x in net.node[node]['work']]
-        nodecite.sort(reverse = True)
-        for x in nodecite:
-            if x < nodecite.index(x) + 1:
-                map[net.node[node]['name']] = nodecite.index(x)
-                break
-
-def calci10(map):
-    for node in net.nodes():
-        nodecite = [x.citations for x in net.node[node]['work']]
-        num = 0
-        for x in nodecite:
-            if x > 10:
-                num += 1
-        map[net.node[node]['name']] = num
 
 def calcG(map):
     for node in net.nodes():
