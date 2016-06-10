@@ -5,9 +5,9 @@ date: June 2016
 """
 
 import csv
+import time
 import networkx as nx
 import itertools
-import matplotlib.pyplot as plt #needed for plotting
 import plotly.plotly as py
 import plotly.graph_objs as go
 import urllib
@@ -15,7 +15,7 @@ from tkinter import *
 from bs4 import BeautifulSoup
 from fuzzywuzzy import process
 import heapq
-import requests
+import random
 py.sign_in('amd112', '0eso7gihvt')
 
 net = nx.Graph()
@@ -54,9 +54,8 @@ def getCite(author, paper):
     nauthor = author.replace(" ", "+")
     npaper = paper.replace(" ", "+")
     url = base + nauthor + "+" + npaper
-    #get = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    #html = urllib.request.urlopen(get).read()
-    html = requests.get(url)
+    get = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    html = urllib.request.urlopen(get).read()
     soup = BeautifulSoup(html, 'lxml')
     allTitles = soup.findAll('h3', 'gs_rt')
     if len(allTitles) == 0:
@@ -76,11 +75,31 @@ def getCite(author, paper):
         cited = b.find('a').get_text()
         try:
             citenum = int(re.search(r'\d+', cited).group())
-            print(cited)
         except AttributeError:
             return 0
         citations.append(citenum)
     return citations[number]
+
+def getAllCites(grant, publication, mapCite):
+    for x in [grant, publication]:
+        y = 0
+        for line in x:
+            id = line[0][re.search('per', line[0]).end():len(line[0])]
+            title = line[2]
+            person = net.node[id]['name']
+            num = getCite(person, title)
+            workid = line[1][re.search(x[1], line[1]).end():len(line[1])]
+            mapCite[workid] = num
+            wait = [.5, 1, 2, 2.1, .9, 1.5, 3, 2.6, 3.4, .7, 5]
+            time.sleep(random.choice(wait))
+            if x % 50 == 0:
+                time.sleep(5)
+            elif x % 100 == 0:
+                time.sleep(15)
+    writer = csv.writer(open('citations.csv', 'wb'))
+    for key, value in mapCite.items():
+        writer.writerow([key, value])
+
 
 '''
 Loops through grant and publication data to add the correct data to the correct people and create map of who
@@ -157,20 +176,7 @@ def calcCollab(map):
     for node in net.nodes():
         curr = net.node[node]
         map[curr['name']] = percCollab(node) * departments(node) * 40
-
-def calcCollab2(map):
-    for node in net.nodes():
-        curr = net.node[node]
-        map[curr['name']] = len(net[node])
-
-def calcCollab3(map):
-    for node in net.nodes():
-        curr = net.node[node]
-        times = []
-        for neigh in net[node]:
-            times.append(time(node, neigh))
-        avg = sum(times) / len(times)
-        map[curr['name']] = avg * 5
+        net.node[node]['weight'] = percCollab(node) * departments(node)
 
 def departments(node): #returns number of fields the person has collaborated with
     deps = []
@@ -191,7 +197,7 @@ def percCollab(node): #returns percentage of publications that are collaborative
         return 0.1
     return perc
 
-def time(node, neighbor): #returns number of years working together, 0 if no work, 1 if 1 year or less
+def timeCollab(node, neighbor): #returns number of years working together, 0 if no work, 1 if 1 year or less
     years = []
     edge = net.edge[node][neighbor]['work']
     if len(edge) == 0:
@@ -326,19 +332,7 @@ publicationf = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data
 mapWork = dict()
 weights = dict()
 productive = dict()
-weights2 = dict()
-weights3 = dict()
+mapCite = dict()
 
 createNodes(peoplef)
-addWork(grantf, publicationf, mapWork)
-findEdges(mapWork)
-removeBlanks()
-calcCollab(weights)
-calcCollab2(weights2)
-calcCollab3(weights3)
-calcH(productive)
-bestHist(weights,'top', 'bottom')
-stackedHist(weights, weights2, weights3, 'stack')
-histAll(weights, 'all')
-productive = weights
-scatterAll(weights, productive, 'scatter')
+getAllCites(grantf, publicationf, mapCite)
