@@ -84,18 +84,21 @@ def getAllCites(grant, publication, mapCite):
     for x in [grant, publication]:
         y = 0
         for line in x:
-            id = line[0][re.search('per', line[0]).end():len(line[0])]
-            title = line[2]
-            person = net.node[id]['name']
-            num = getCite(person, title)
             workid = line[1][re.search(line[1], line[1]).end():len(line[1])]
-            mapCite[workid] = num
+            if workid not in mapCite:
+                id = line[0][re.search('per', line[0]).end():len(line[0])]
+                title = line[2]
+                person = net.node[id]['name']
+                num = getCite(person, title)
+                mapCite[workid] = num
+                print(num)
             wait = [.5, 1, 2, 2.1, .9, 1.5, 3, 2.6, 3.4, .7, 5]
-            time.sleep(random.choice(wait))
             if y % 50 == 0:
                 time.sleep(5)
             elif y % 100 == 0:
                 time.sleep(15)
+            else:
+                time.sleep(random.choice(wait))
             y += 1
     writer = csv.writer(open('citations.csv', 'wb'))
     for key, value in mapCite.items():
