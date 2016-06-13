@@ -88,14 +88,15 @@ def getAllCites(grant, publication, mapCite):
             title = line[2]
             person = net.node[id]['name']
             num = getCite(person, title)
-            workid = line[1][re.search(x[1], line[1]).end():len(line[1])]
+            workid = line[1][re.search(line[1], line[1]).end():len(line[1])]
             mapCite[workid] = num
             wait = [.5, 1, 2, 2.1, .9, 1.5, 3, 2.6, 3.4, .7, 5]
             time.sleep(random.choice(wait))
-            if x % 50 == 0:
+            if y % 50 == 0:
                 time.sleep(5)
-            elif x % 100 == 0:
+            elif y % 100 == 0:
                 time.sleep(15)
+            y += 1
     writer = csv.writer(open('citations.csv', 'wb'))
     for key, value in mapCite.items():
         writer.writerow([key, value])
@@ -208,7 +209,7 @@ def calcAllMetrics(dict):
                 break
         dict[net.node[node]['name']] = {'percCollab': perc, 'numDepartments': numDeps, 'avgCollabTime': avgTime,
                                         'hIndex': hIndex, 'i10Index': i10}
-        
+
 '''
 4 visualization options.
 '''
