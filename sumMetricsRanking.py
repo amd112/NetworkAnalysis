@@ -151,7 +151,23 @@ def position(dict, dev, person, met1, met2):
         matrix.append(row)
     return matrix
 
+def saveImage(matrix, xaxis, yaxis, name):
+    data = [go.Heatmap(z=matrix)]
+    layout = go.Layout(xaxis=dict(title=xaxis, showgrid=False, zeroline=False, showline=False,
+                                  ticks='', showticklabels=False),
+                       yaxis=dict(title=yaxis, showgrid=False, zeroline=False, showline=False,
+                                  ticks='', showticklabels=False))
+    fig = go.Figure(data=data, layout=layout)
+    py.image.save_as(fig, filename=name)
 
+def posPerson(person, res):
+    matrix = position(valMet, res, person, 'percCollab', 'avgTime')
+    matrix2 = position(valMet, res, person, 'percCollab', 'degree')
+    matrix3 = position(valMet, res, person, 'avgTime', 'degree')
+
+    saveImage(matrix, 'avgTime', 'percCollab', person + '.png')
+    saveImage(matrix2, 'degree', 'percCollab', person + '-2.png')
+    saveImage(matrix3, 'degree', 'avgTime', person + '-3.png')
 
 '''
 MAIN
@@ -169,24 +185,6 @@ removeBlanks()
 valMet = dict()
 metrics(valMet)
 
-matrix = position(valMet, 400, '1004042', 'percCollab', 'avgTime')
-matrix2 = position(valMet, 400, '1004042', 'percCollab', 'degree')
-
-data = [go.Heatmap(z = matrix)]
-layout = go.Layout(xaxis=dict(title='degree', showgrid=False, zeroline=False, showline=False,
-                              ticks='', showticklabels=False),
-                   yaxis=dict(title='avgTime', showgrid=False, zeroline=False, showline=False,
-                              ticks='', showticklabels=False))
-fig = go.Figure(data = data, layout = layout)
-py.image.save_as(fig, filename = "heat.png")
-
-data = [go.Heatmap(z = matrix2)]
-layout = go.Layout(xaxis=dict(title = 'degree', showgrid=False, zeroline=False, showline=False,
-                             ticks='', showticklabels=False),
-                   yaxis=dict(title = 'avgTime', showgrid=False, zeroline=False, showline=False,
-                             ticks='', showticklabels=False))
-fig = go.Figure(data = data, layout = layout)
-py.image.save_as(fig, filename = "heat2.png")
-
+posPerson('6632282', 200)
 
 
