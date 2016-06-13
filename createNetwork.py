@@ -104,7 +104,6 @@ def getAllCites(grant, publication, mapCite):
     for key, value in mapCite.items():
         writer.writerow([key, value])
 
-
 '''
 Loops through grant and publication data to add the correct data to the correct people and create map of who
 worked on what publication
@@ -168,7 +167,6 @@ def removeBlanks():
     deg = net.degree()
     to_remove = [n for n in deg if deg[n] == 0]
     net.remove_nodes_from(to_remove)
-
 
 '''
 Calculate the collaboration coefficient of each node and saves in map (name: number), various helper functions
@@ -299,8 +297,6 @@ def export():
     for this, that in net.edges():
         net.edge[this][that]['work'] = len(net.edge[this][that]['work'])
     nx.write_graphml(net, "hospital.graphml") #export`
-
-
 
 '''
 MAIN

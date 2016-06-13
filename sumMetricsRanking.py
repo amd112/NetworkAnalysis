@@ -151,12 +151,13 @@ def position(dict, dev, person, met1, met2):
         matrix.append(row)
     return matrix
 
-def saveImage(matrix, xaxis, yaxis, name):
+def saveImage(matrix, xaxis, yaxis, name, size):
     data = [go.Heatmap(z=matrix)]
     layout = go.Layout(xaxis=dict(title=xaxis, showgrid=False, zeroline=False, showline=False,
                                   ticks='', showticklabels=False),
                        yaxis=dict(title=yaxis, showgrid=False, zeroline=False, showline=False,
-                                  ticks='', showticklabels=False))
+                                  ticks='', showticklabels=False),
+                       width = size, height = size)
     fig = go.Figure(data=data, layout=layout)
     py.image.save_as(fig, filename=name)
 
@@ -165,9 +166,9 @@ def posPerson(person, res):
     matrix2 = position(valMet, res, person, 'percCollab', 'degree')
     matrix3 = position(valMet, res, person, 'avgTime', 'degree')
 
-    saveImage(matrix, 'avgTime', 'percCollab', person + '.png')
-    saveImage(matrix2, 'degree', 'percCollab', person + '-2.png')
-    saveImage(matrix3, 'degree', 'avgTime', person + '-3.png')
+    saveImage(matrix, 'avgTime', 'percCollab', person + '.png', 800)
+    saveImage(matrix2, 'degree', 'percCollab', person + '-2.png', 800)
+    saveImage(matrix3, 'degree', 'avgTime', person + '-3.png', 800)
 
 '''
 MAIN
@@ -185,6 +186,6 @@ removeBlanks()
 valMet = dict()
 metrics(valMet)
 
-posPerson('6632282', 200)
+posPerson('1837052', 200)
 
 
