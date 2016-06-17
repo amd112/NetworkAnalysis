@@ -5,21 +5,18 @@ date: June 2016
 """
 
 import csv
-import time
 import networkx as nx
 import itertools
 import plotly.plotly as py
-import plotly.graph_objs as go
-import urllib
 from tkinter import *
-from bs4 import BeautifulSoup
-from fuzzywuzzy import process
-import heapq
-import random
+import time
+from math import acos, sqrt, degrees
 py.sign_in('amd112', '0eso7gihvt')
 
 net = nx.Graph()
 fieldnet = nx.Graph()
+mapWork = dict()
+mapPeople = dict()
 
 '''
 Create a storage system for publications and grants
@@ -30,7 +27,18 @@ class Work:
         self.name = name
         self.type = type
         self.year = year
+        self.pi = ""
         self.citations = 0
+        self.authors = []
+
+class Person:
+    def __init__(self, name, field, school, position):
+        self.name = name
+        self.school = school
+        self.field = field
+        self.position = position
+        self.work = []
+
 
 '''
 Loops through position info to create Nodes with id, name, field, school, position type info.
@@ -44,71 +52,15 @@ def createNodes(people):
         field = line[5]
         school = line[7]
         position = line[2][re.search('#', line[2]).end():len(line[2])]
-        net.add_node(id, name = name, field = field, school = school, position = position, work = [])
-
-'''
-Get citation data DED SO SAD :'(
-'''
-def getCite(author, paper):
-    base = "https://scholar.google.com/scholar?q="
-    nauthor = author.replace(" ", "+")
-    npaper = paper.replace(" ", "+")
-    url = base + nauthor + "+" + npaper
-    get = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    html = urllib.request.urlopen(get).read()
-    soup = BeautifulSoup(html, 'lxml')
-    allTitles = soup.findAll('h3', 'gs_rt')
-    if len(allTitles) == 0:
-        return 0
-    titles = []
-    for b in allTitles:
-        try:
-            titles.append(b.find('a').get_text())
-        except AttributeError:
-            return 0
-    title = process.extract(paper, titles, limit = 1)[0][0]
-    number = titles.index(title)
-    allCites = soup.findAll(lambda tag: tag.name == 'div' and
-                                   tag.get('class') == ['gs_fl']) #fixed it god damn finally jeez
-    citations = []
-    for b in allCites:
-        cited = b.find('a').get_text()
-        try:
-            citenum = int(re.search(r'\d+', cited).group())
-        except AttributeError:
-            return 0
-        citations.append(citenum)
-    return citations[number]
-
-def getAllCites(grant, publication, mapCite):
-    for x in [grant, publication]:
-        y = 0
-        for line in x:
-            workid = line[1][re.search(line[1], line[1]).end():len(line[1])]
-            if workid not in mapCite:
-                id = line[0][re.search('per', line[0]).end():len(line[0])]
-                title = line[2]
-                person = net.node[id]['name']
-                num = getCite(person, title)
-                mapCite[workid] = num
-                print(num)
-            wait = [.5, 1, 2, 2.1, .9, 1.5, 3, 2.6, 3.4, .7, 5]
-            if y % 50 == 0:
-                time.sleep(5)
-            elif y % 100 == 0:
-                time.sleep(15)
-            else:
-                time.sleep(random.choice(wait))
-            y += 1
-    writer = csv.writer(open('citations.csv', 'wb'))
-    for key, value in mapCite.items():
-        writer.writerow([key, value])
+        per = Person(name, field, school, position)
+        mapPeople[id] = per
+        net.add_node(id)
 
 '''
 Loops through grant and publication data to add the correct data to the correct people and create map of who
 worked on what publication
 '''
-def addWork(grant, publication, mapWork):
+def addWork(grant, publication):
     grantinfo = [grant, 'gra', 'val-s']
     pubinfo = [publication, 'pub', 'Value']
 
@@ -125,40 +77,49 @@ def addWork(grant, publication, mapWork):
                     type = line[4][re.search('bibo/', line[4]).end():len(line[4])]
                 except AttributeError:
                     type = line[4][re.search('core#', line[4]).end():len(line[4])]
-            curr = Work(workid, name, type, year)
-            net.node[id]['work'].append(curr)
+            try:
+                position = line[5][re.search('core#', line[5]).end():len(line[5])]
+            except IndexError:
+                position = ''
+            mapPeople[id].work.append(workid)
 
-            if mapWork.__contains__(workid):  # creating a dict {grant id: [authors]} to loop through later
-                if not mapWork[workid].__contains__(id):
-                    mapWork[workid].append(id)
+            if mapWork.__contains__(workid):
+                if not mapWork[workid].authors.__contains__(id):
+                    mapWork[workid].authors.append(id)
             else:
-                mapWork[workid] = [id]
+                mapWork[workid] = Work(workid, name, type, year)
+                mapWork[workid].authors = [id]
+            if position == 'PrincipalInvestigatorRole':
+                mapWork[workid].pi = id
 
 '''
 Loops through map created in addWork and creates edges.
 '''
-def findEdges(mapWork):
+def findEdges():
     for pid, ids in mapWork.items(): #for every key in the map
-        for i, j in itertools.combinations(ids, 2): #go through every combo of values
+        people = ids.authors
+        for i, j in itertools.combinations(people, 2): #go through every combo of values
             if i != j:
-                field1 = net.node[i]['field']
-                field2 = net.node[j]['field']
+                field1 = mapPeople[i].field
+                field2 = mapPeople[j].field
                 if net.has_edge(i, j): #if they are already connected
                     net[i][j]['work'].append(pid)  #add the grant to their edge
                     if (field1 is not field2): #if different fields add to field net to count how many collabs
                         if fieldnet.has_edge(field1, field2):
-                            fieldnet[field1][field2]['weight'] += 1
+                            if not fieldnet[field1][field2]['work'].__contains__(pid):
+                                fieldnet[field1][field2]['work'].append(pid)
                         else: #if the fields aren't already connected, connect them
-                            fieldnet.add_edge(field1, field2, weight = 1)
+                            fieldnet.add_edge(field1, field2, work = [pid])
                 else: #if there is no edge between them
                     field = (field1 == field2)
-                    school = (net.node[i]['school'] == net.node[j]['school'])
-                    net.add_edge(i, j, work = [], samefield = field, sameschool = school)
+                    school = (mapPeople[i].school == mapPeople[j].school)
+                    net.add_edge(i, j, work = [pid], samefield = field, sameschool = school)
                     if (field1 is not field2):
                         if fieldnet.has_edge(field1, field2):
-                            fieldnet[field1][field2]['weight'] += 1
+                            if not fieldnet[field1][field2]['work'].__contains__(pid):
+                                fieldnet[field1][field2]['work'].append(pid)
                         else:
-                            fieldnet.add_edge(field1, field2, weight = 1)
+                            fieldnet.add_edge(field1, field2, work = [pid])
 
 '''
 Remove nodes that have no edges at all.
@@ -171,22 +132,19 @@ def removeBlanks():
 '''
 Calculate the collaboration coefficient of each node and saves in map (name: number), various helper functions
 '''
-def calcAllMetrics(dict):
+def calcAllMetrics():
     for node in net.nodes():
         collabPapers = []
-        curr = net.node[node]
         deps = []
         times = []
-        for neighbor in net[curr]:
+        for neighbor in net[node]:
             years = []
-            edgework = net.edge[curr][neighbor]['work']
-            ids = [x.id for x in net.node[node]['work']]
-            field = net.node[neighbor]['field']
+            edgework = net.edge[node][neighbor]['work']
+            field = mapPeople[neighbor].field
             if not deps.__contains__(field):
                 deps.append(field)
             for work in edgework:
-                index = ids.index(work)
-                years.append(int(net.node[node]['work'][index].year))
+                years.append(int(mapWork[work].year))
                 if not collabPapers.__contains__(work):
                     collabPapers.append(work)
             if len(years) <= 1:
@@ -194,68 +152,47 @@ def calcAllMetrics(dict):
             else:
                 timeWorked = max(years) - min(years)
             times.append(timeWorked)
-        perc = len(collabPapers) / len(net.node[curr]['work'])
+        perc = len(collabPapers) / len(mapPeople[node].work)
         numDeps = len(deps)
         avgTime = sum(times) / len(times)
 
         #now doing calculations for productivity rankings
-        nodecite = [x.citations for x in net.node[node]['work']]
+        nodecite = [mapWork[x].citations for x in mapPeople[node].work]
         nodecite.sort(reverse=True)
         i10 = 0
+        hdex = 0
         for x in nodecite:
             if x > 10:
                 i10 += 1
             if x < nodecite.index(x) + 1:
-                hIndex = nodecite.index(x)
+                hdex = nodecite.index(x)
                 break
-        dict[net.node[node]['name']] = {'percCollab': perc, 'numDepartments': numDeps, 'avgCollabTime': avgTime,
-                                        'hIndex': hIndex, 'i10Index': i10}
+        mapPeople[node].percCollab = perc
+        mapPeople[node].numDepartments = numDeps
+        mapPeople[node].avgCollabTime = avgTime
+        mapPeople[node].hIndex = hdex
+        mapPeople[node].i10Index = i10
 
-'''
-4 visualization options.
-'''
-def bestHist(weight, nametop, namebot):
-    X = 5 #top how many and bottom how many
-    py.sign_in('amd112', '0eso7gihvt')
-    big = heapq.nlargest(X, weight, key = weight.get)
-    data = [go.Bar(x = big, y = [weight[x] for x in big])]
-    py.image.save_as(data, filename = nametop + ".png")
-    small = heapq.nsmallest(X, weight, key = weight.get)
-    small.reverse()
-    data2 = [go.Bar(x = small, y = [weight[x] for x in small])]
-    py.image.save_as(data2, filename = namebot + ".png")
+def findDiff():
+    for edge in net.edges():
+        p1 = mapPeople[edge[0]]
+        p2 = mapPeople[edge[1]]
 
-def histAll(weight, name):
-    names = [x for x in weight.keys()]
-    values = [y for y in weight.values()]
-    tog = zip(values, names)
-    tog = sorted(tog, key = lambda x: x[0], reverse = True)
-    val, named = zip(*tog)
-    data = [go.Bar(x = named, y = val)]
-    py.image.save_as(data, filename = name + ".png")
-
-def scatterAll(collab, productive, name):
-    data = [go.Scatter(x = [collab[x] for x in collab], y = [productive[x] for x in productive], mode = 'markers')]
-    py.image.save_as(data, name + ".png")
-
-def stackedHist(weight, weight2, weight3, name):
-    names = [x for x in weight.keys()]
-    values = [y for y in weight.values()]
-    names2 = [x for x in weight2.keys()]
-    values2 = [y for y in weight2.values()]
-    names3 = [x for x in weight3.keys()]
-    values3 = [y for y in weight3.values()]
-    tog = zip(values, names, values2, names2, values3, names3)
-    tog = sorted(tog, key=lambda x: x[0], reverse=True)
-    val, nam, val2, nam2, val3, nam3 = zip(*tog)
-    data = go.Bar(x = nam, y = val)
-    data2 = go.Bar(x = nam2, y = val2)
-    data3 = go.Bar(x = nam3, y = val3)
-    trace = [data, data2, data3]
-    layout = go.Layout(barmode='group')
-    fig = go.Figure(data=trace, layout=layout)
-    py.image.save_as(fig, filename = name + ".png")
-
+        list = [p1.percCollab, p1.numDepartments, p1.avgCollabTime]
+        list2 = [p2.percCollab, p2.numDepartments, p2.avgCollabTime]
+        dot = 0
+        one = 0
+        two = 0
+        comb = zip(list, list2)
+        for x in comb:
+            dot += x[0] * x[1]
+            one += x[0] * x[0]
+            two += x[1] * x[1]
+        one = sqrt(one)
+        two = sqrt(two)
+        inv = dot / (one * two)
+        angle = degrees(acos(inv))
+        net[edge[0]][edge[1]]['diff'] = angle
 
 '''
 Calculate productivity of each person. Next four functions are all options
@@ -292,22 +229,26 @@ def calcHi(map, mapWork):
 Clears lists for export to graphml.
 '''
 def export():
-    for this in net.nodes():
-        net.node[this]['work'] = len(net.node[this]['work']) #make publications just be # of pubs
-    for this, that in net.edges():
-        net.edge[this][that]['work'] = len(net.edge[this][that]['work'])
+    for node in net.nodes():
+        curr = net.node[node]
+        curr['pubs'] = len(mapPeople[node].work)
+        curr['field'] = mapPeople[node].field
+        curr['name'] = mapPeople[node].name
     nx.write_graphml(net, "hospital.graphml") #export`
 
 '''
 MAIN
 '''
+
+start = time.time()
 peoplef = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/appointments_neurobiology & ophthalmology.csv'))
 grantf = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/grants_neurobiology & ophthalmology.csv'))
 publicationf = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/publications_neurobiology & ophthalmology.csv'))
-mapWork = dict()
-weights = dict()
-productive = dict()
-mapCite = dict()
 
 createNodes(peoplef)
-getAllCites(grantf, publicationf, mapCite)
+addWork(grantf, publicationf)
+findEdges()
+removeBlanks()
+calcAllMetrics()
+findDiff()
+print(time.time() - start)
