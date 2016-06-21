@@ -4,14 +4,12 @@ contact: amd112@duke.edu
 date: June 2016
 """
 
-import csv
+from csv import reader
 import networkx as nx
-import itertools
-import plotly.plotly as py
-from tkinter import *
-import time
+from itertools import combinations
+from tkinter import re
+from time import time
 from math import acos, sqrt, degrees
-py.sign_in('amd112', '0eso7gihvt')
 
 net = nx.Graph()
 fieldnet = nx.Graph()
@@ -54,7 +52,7 @@ def createNodes(people):
         position = line[2][re.search('#', line[2]).end():len(line[2])]
         per = Person(name, field, school, position)
         mapPeople[id] = per
-        net.add_node(id)
+        net.add_node(id),
 
 '''
 Loops through grant and publication data to add the correct data to the correct people and create map of who
@@ -98,7 +96,7 @@ Loops through map created in addWork and creates edges.
 def findEdges():
     for pid, ids in mapWork.items(): #for every key in the map
         people = ids.authors
-        for i, j in itertools.combinations(people, 2): #go through every combo of values
+        for i, j in combinations(people, 2): #go through every combo of values
             if i != j:
                 field1 = mapPeople[i].field
                 field2 = mapPeople[j].field
@@ -128,15 +126,20 @@ def removeBlanks():
     deg = net.degree()
     to_remove = [n for n in deg if deg[n] == 0]
     net.remove_nodes_from(to_remove)
+    for n in to_remove:
+        del mapPeople[n]
 
 '''
-Calculate the collaboration coefficient of each node and saves in map (name: number), various helper functions
+Various functions that create additional data on people
 '''
 def calcAllMetrics():
+    bw = nx.betweenness_centrality(net, normalized = False)
     for node in net.nodes():
         collabPapers = []
         deps = []
         times = []
+        degree = len(net[node])
+        centrality = bw[node]
         for neighbor in net[node]:
             years = []
             edgework = net.edge[node][neighbor]['work']
@@ -152,9 +155,11 @@ def calcAllMetrics():
             else:
                 timeWorked = max(years) - min(years)
             times.append(timeWorked)
-        perc = len(collabPapers) / len(mapPeople[node].work)
+        if len(mapPeople[node].work) != 0: perc = len(collabPapers) / len(mapPeople[node].work)
+        else: perc = 0
         numDeps = len(deps)
-        avgTime = sum(times) / len(times)
+        if len(times) != 0: avgTime = sum(times) / len(times)
+        else: avgTime = 0
 
         #now doing calculations for productivity rankings
         nodecite = [mapWork[x].citations for x in mapPeople[node].work]
@@ -167,6 +172,9 @@ def calcAllMetrics():
             if x < nodecite.index(x) + 1:
                 hdex = nodecite.index(x)
                 break
+
+        mapPeople[node].centrality = centrality
+        mapPeople[node].degree = degree
         mapPeople[node].percCollab = perc
         mapPeople[node].numDepartments = numDeps
         mapPeople[node].avgCollabTime = avgTime
@@ -177,7 +185,6 @@ def findDiff():
     for edge in net.edges():
         p1 = mapPeople[edge[0]]
         p2 = mapPeople[edge[1]]
-
         list = [p1.percCollab, p1.numDepartments, p1.avgCollabTime]
         list2 = [p2.percCollab, p2.numDepartments, p2.avgCollabTime]
         dot = 0
@@ -195,38 +202,7 @@ def findDiff():
         net[edge[0]][edge[1]]['diff'] = angle
 
 '''
-Calculate productivity of each person. Next four functions are all options
-'''
-
-def calcG(map):
-    for node in net.nodes():
-        nodecite = [x.citations for x in net.node[node]['work']]
-        nodecite.sort(reverse=True)
-        tot = 0
-        for x in nodecite:
-            tot += x
-            if tot < ((nodecite.index(x) + 1) ** 2):
-                map[net.node[node]['name']] = nodecite.index(x)
-                break
-
-def calcHi(map, mapWork):
-    for node in net.nodes():
-        nodecite = [x.citations for x in net.node[node]['work']]
-        nodework = [x.id for x in net.node[node]['work']]
-        nodecite.sort(reverse=True)
-        h = 0
-        nums = []
-        for x in nodecite:
-            if x < nodecite.index(x) + 1:
-                h = nodecite.index(x)
-                break
-        for x in nodework:
-            nums.append(len(mapWork[id]))
-        authors = sum(nums) / float(len(nums))
-        map[net.node[node]['name']] = h/authors
-
-'''
-Clears lists for export to graphml.
+Fills nodes from dict() and exports
 '''
 def export():
     for node in net.nodes():
@@ -234,16 +210,18 @@ def export():
         curr['pubs'] = len(mapPeople[node].work)
         curr['field'] = mapPeople[node].field
         curr['name'] = mapPeople[node].name
+    for edge in net.edges():
+        net.edge[edge[0]][edge[1]]['work'] = len(net.edge[edge[0]][edge[1]]['work'])
     nx.write_graphml(net, "hospital.graphml") #export`
 
-'''
+'''/
 MAIN
 '''
 
-start = time.time()
-peoplef = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/appointments_neurobiology & ophthalmology.csv'))
-grantf = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/grants_neurobiology & ophthalmology.csv'))
-publicationf = csv.reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/publications_neurobiology & ophthalmology.csv'))
+start = time()
+peoplef = reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/appointments_neurobiology & ophthalmology.csv'))
+grantf = reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/grants_neurobiology & ophthalmology.csv'))
+publicationf = reader(open('/Users/Anne/Documents/Duke/Duke Spring 2016/Data+/publications_neurobiology & ophthalmology.csv'))
 
 createNodes(peoplef)
 addWork(grantf, publicationf)
@@ -251,4 +229,4 @@ findEdges()
 removeBlanks()
 calcAllMetrics()
 findDiff()
-print(time.time() - start)
+export()

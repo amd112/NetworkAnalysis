@@ -20,7 +20,12 @@ Get citation data DED SO SAD :'(
 def getCite(author, paper):
     base = "https://scholar.google.com/scholar?q="
     nauthor = author.replace(" ", "+")
+    nauthor = nauthor.replace(".", "")
+    nauthor = nauthor.replace(",", "")
     npaper = paper.replace(" ", "+")
+    npaper = npaper.replace('.', '')
+    if len(npaper) == 0:
+        return 0
     url = base + nauthor + "+" + npaper
     get = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     html = urllib.request.urlopen(get).read()
@@ -74,19 +79,20 @@ def init():
         people[personid] = x[1]
         #dictionary people --- person id: person name
     for (key, val) in auth.items():
-        auth[key] = people[val[0]]
+        auth[key][0] = people[val[0]] #auth[work title] = [person name, work id]
     return auth
 
 def getAllCites(auth):
     y = 0
     citations = dict()
+    file = open('citations.csv', 'w')
     for (title, person) in auth.items():
         try:
             name = person[0]
             grantid = person[1]
             num = getCite(name, title)
             citations[grantid] = num
-            print(num)
+            print(grantid, num)
             wait = [.5, 1, 2, 2.1, .9, 1.5, 3, 2.6, 3.4, .7, 5]
             if y % 50 == 0:
                 time.sleep(5)
@@ -96,9 +102,20 @@ def getAllCites(auth):
                 time.sleep(random.choice(wait))
             y += 1
         except urllib.error.HTTPError:
-            writer = csv.writer(open('citations.csv', 'w'))
+            print('503 Error: Blocked by Google')
+            writer = csv.writer(file, lineterminator = '\n')
             for key, value in citations.items():
                 writer.writerow([key, value])
+            file.close()
+            break
+    if not file.closed:
+        writer = csv.writer(file, lineterminator='\n')
+        for key, value in citations.items():
+            writer.writerow([key, value])
+        file.close()
 
-auth = init()
-getAllCites(auth)
+def saveCitations():
+    auth = init()
+    getAllCites(auth)
+
+saveCitations()
